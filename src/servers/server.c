@@ -41,8 +41,8 @@ int recv_file(int server_socket_fd)
     int length = 0;
     while((length = recv(server_socket_fd, buffer, BUFFER_SIZE, 0)) > 0)
     {
-      printf("length: %d\n", length);
-      printf("buffer receive: %s\n", buffer);
+      // printf("length: %d\n", length);
+      // printf("buffer receive: %s\n", buffer);
       if(fwrite(buffer, sizeof(char), length, fp) < length)
       {
         printf("File: %s write failed\n", file_name);
