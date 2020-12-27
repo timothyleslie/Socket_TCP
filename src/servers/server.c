@@ -4,7 +4,8 @@
 #include<stdio.h>    // printf   
 #include<stdlib.h>   // exit   
 #include<string.h>   // bzero   
-    
+#include<pthread.h>
+
 #define SERVER_PORT 8000   
 #define LENGTH_OF_LISTEN_QUEUE 20   
 #define BUFFER_SIZE 1024   
@@ -102,15 +103,57 @@ int send_file(int server_socket_fd)
     return 0;  
 }
 
-int main(void)   
+
+void* main_for_thread(void* socket_fd)
+{
+  pthread_detach(pthread_self());
+  int new_server_socket_fd = (int) socket_fd;
+  printf("thread fd: %d\n", new_server_socket_fd);
+  char info_buffer[INFO_SIZE+1];   
+    
+  while(1)
+  {
+    bzero(info_buffer, INFO_SIZE+1); 
+    printf("%s\n", info_buffer);
+    // recv函数接收数据到缓冲区buffer中   
+    if(recv(new_server_socket_fd, info_buffer, INFO_SIZE, 0) < 0)   
+    {   
+      perror("Server Recieve Data Failed:");  
+      exit(1);    
+    }
+
+    if(!strcmp(info_buffer, "0"))//客户端发来下载请求
+    {
+      send_file(new_server_socket_fd);
+    }
+    else if(!strcmp(info_buffer, "1"))//客户端发来上传请求
+    {
+      recv_file(new_server_socket_fd);
+    }  
+    else
+    {
+      printf("error command\n");
+    }
+  }
+  // 关闭与客户端的连接
+  close(new_server_socket_fd);
+  printf("Thread Exit!");
+
+  // 结束线程
+  pthread_exit(NULL);
+}
+
+
+int main()   
 {   
   // 声明并初始化一个服务器端的socket地址结构   
+
   struct sockaddr_in server_addr;   
   bzero(&server_addr, sizeof(server_addr));   
   server_addr.sin_family = AF_INET;   
   server_addr.sin_addr.s_addr = htons(INADDR_ANY);   
   server_addr.sin_port = htons(SERVER_PORT);   
-    
+ 
   // 创建socket，若成功，返回socket描述符   
   int server_socket_fd = socket(PF_INET, SOCK_STREAM, 0);   
   if(server_socket_fd < 0)   
@@ -150,32 +193,17 @@ int main(void)
       break;   
     }   
     
-    // recv函数接收数据到缓冲区buffer中   
-    char info_buffer[INFO_SIZE+1];   
-    bzero(info_buffer, INFO_SIZE+1);   
-    if(recv(new_server_socket_fd, info_buffer, INFO_SIZE, 0) < 0)   
-    {   
-      perror("Server Recieve Data Failed:");   
-      break;   
-    }
+    printf("main fd: %d\n", new_server_socket_fd);
 
-    // printf("command: %s\n", info_buffer);
-    if(!strcmp(info_buffer, "0"))//客户端发来下载请求
+    void* threadReturn;
+    pthread_t child_thread;
+    if(pthread_create(&child_thread, NULL, main_for_thread, (void*)new_server_socket_fd) < 0)
     {
-      send_file(new_server_socket_fd);
+      printf("create child thread fail\n");
     }
-    else if(!strcmp(info_buffer, "1"))//客户端发来上传请求
-    {
-      recv_file(new_server_socket_fd);
-    }  
-    else
-    {
-      printf("error command\n");
-      continue;
-    }
-     
-    // 关闭与客户端的连接   
-    close(new_server_socket_fd);   
+    printf("Create Thread Success\n");
+    
+       
   }   
   // 关闭监听用的socket   
   close(server_socket_fd);   
