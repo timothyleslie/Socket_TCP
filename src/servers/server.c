@@ -9,7 +9,99 @@
 #define LENGTH_OF_LISTEN_QUEUE 20   
 #define BUFFER_SIZE 1024   
 #define FILE_NAME_MAX_SIZE 512   
+#define INFO_SIZE 1
+
+int recv_file(int server_socket_fd)
+{
+  char file_name[FILE_NAME_MAX_SIZE+1];   
+  bzero(file_name, FILE_NAME_MAX_SIZE+1);  
+  char buffer[BUFFER_SIZE+1];
+  bzero(buffer, BUFFER_SIZE+1);
+
+  if(recv(server_socket_fd, buffer, BUFFER_SIZE, 0) < 0)   
+  {   
+    perror("Server Recieve Data Failed:");  
+    return -1;   
+  }
+
+  strncpy(file_name, buffer, strlen(buffer)>FILE_NAME_MAX_SIZE?FILE_NAME_MAX_SIZE:strlen(buffer));   
+  printf("%s\n", file_name); 
+
+  // 打开文件并读取文件数据   
+  FILE *fp = fopen(file_name, "wb");
+     
+  if(NULL == fp)   
+  {  
+    printf("File:%s can not open\n", file_name);
+    return -1;   
+  } 
+  else
+  {
+    memset(buffer, 0, BUFFER_SIZE);
+    int length = 0;
+    while((length = recv(server_socket_fd, buffer, BUFFER_SIZE, 0)) > 0)
+    {
+      printf("length: %d\n", length);
+      printf("buffer receive: %s\n", buffer);
+      if(fwrite(buffer, sizeof(char), length, fp) < length)
+      {
+        printf("File: %s write failed\n", file_name);
+        return -1;
+      }
+      memset(buffer, 0, BUFFER_SIZE);
+    }
+  }
+  fclose(fp);
+  printf("Successfully receive file: %s\n", file_name);
+  return 0;  
+}
+
+
+int send_file(int server_socket_fd)
+{
+  // 然后从buffer(缓冲区)拷贝到file_name中   
+    char file_name[FILE_NAME_MAX_SIZE+1];   
+    bzero(file_name, FILE_NAME_MAX_SIZE+1);  
+    char buffer[BUFFER_SIZE+1];
+    bzero(buffer, BUFFER_SIZE+1);
     
+    if(recv(server_socket_fd, buffer, BUFFER_SIZE, 0) < 0)   
+    {   
+      perror("Server Recieve Data Failed:");  
+      return -1;   
+    }
+
+    strncpy(file_name, buffer, strlen(buffer)>FILE_NAME_MAX_SIZE?FILE_NAME_MAX_SIZE:strlen(buffer));   
+    printf("%s\n", file_name);   
+    
+    // 打开文件并读取文件数据   
+    FILE *fp = fopen(file_name, "r");   
+    if(NULL == fp)   
+    {  
+      printf("File:%s Not Found\n", file_name);   
+    }   
+    else  
+    {  
+      bzero(buffer, BUFFER_SIZE);   
+      int length = 0;   
+      // 每读取一段数据，便将其发送给客户端，循环直到文件读完为止   
+      while((length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)   
+      {   
+        if(send(server_socket_fd, buffer, length, 0) < 0)   
+        {   
+          printf("Send File:%s Failed./n", file_name);   
+          break;   
+        }   
+        bzero(buffer, BUFFER_SIZE);   
+      }   
+    
+      // 关闭文件   
+      fclose(fp);   
+      printf("File:%s Transfer Successful!\n", file_name);   
+    } 
+    return 0;  
+}
+
 int main(void)   
 {   
   // 声明并初始化一个服务器端的socket地址结构   
@@ -59,45 +151,29 @@ int main(void)
     }   
     
     // recv函数接收数据到缓冲区buffer中   
-    char buffer[BUFFER_SIZE];   
-    bzero(buffer, BUFFER_SIZE);   
-    if(recv(new_server_socket_fd, buffer, BUFFER_SIZE, 0) < 0)   
+    char info_buffer[INFO_SIZE+1];   
+    bzero(info_buffer, INFO_SIZE+1);   
+    if(recv(new_server_socket_fd, info_buffer, INFO_SIZE, 0) < 0)   
     {   
       perror("Server Recieve Data Failed:");   
       break;   
-    }   
-    
-    // 然后从buffer(缓冲区)拷贝到file_name中   
-    char file_name[FILE_NAME_MAX_SIZE+1];   
-    bzero(file_name, FILE_NAME_MAX_SIZE+1);   
-    strncpy(file_name, buffer, strlen(buffer)>FILE_NAME_MAX_SIZE?FILE_NAME_MAX_SIZE:strlen(buffer));   
-    printf("%s\n", file_name);   
-    
-    // 打开文件并读取文件数据   
-    FILE *fp = fopen(file_name, "r");   
-    if(NULL == fp)   
-    {   
-      printf("File:%s Not Found\n", file_name);   
-    }   
-    else  
-    {   
-      bzero(buffer, BUFFER_SIZE);   
-      int length = 0;   
-      // 每读取一段数据，便将其发送给客户端，循环直到文件读完为止   
-      while((length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)   
-      {   
-        if(send(new_server_socket_fd, buffer, length, 0) < 0)   
-        {   
-          printf("Send File:%s Failed./n", file_name);   
-          break;   
-        }   
-        bzero(buffer, BUFFER_SIZE);   
-      }   
-    
-      // 关闭文件   
-      fclose(fp);   
-      printf("File:%s Transfer Successful!\n", file_name);   
-    }   
+    }
+
+    // printf("command: %s\n", info_buffer);
+    if(!strcmp(info_buffer, "0"))//客户端发来下载请求
+    {
+      send_file(new_server_socket_fd);
+    }
+    else if(!strcmp(info_buffer, "1"))//客户端发来上传请求
+    {
+      recv_file(new_server_socket_fd);
+    }  
+    else
+    {
+      printf("error command\n");
+      continue;
+    }
+     
     // 关闭与客户端的连接   
     close(new_server_socket_fd);   
   }   

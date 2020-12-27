@@ -1,8 +1,5 @@
 .PHONY:all
-all:client server
-
-client:client.c
-	gcc -o $@ $^
+all:server
 server:server.c
 	gcc -o $@ $^
 
