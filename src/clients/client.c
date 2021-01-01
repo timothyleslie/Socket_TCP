@@ -60,9 +60,9 @@ int download(int client_socket_fd)
     bzero(buffer, BUFFER_SIZE);   
   }   
     
-  // 接收成功后，关闭文件，关闭socket   
+  // 接收成功后，关闭文件，关闭socket 
+  fclose(fp);  
   printf("Receive File:\t%s From Server IP Successful!\n", file_name);  
-  close(fp); 
 }
 
 
@@ -117,9 +117,9 @@ int upload(int client_socket_fd)
     memset(buffer, 0, BUFFER_SIZE);
   }
 
-  // 接收成功后，关闭文件  
+  // 接收成功后，关闭文件
+  fclose(fp);   
   printf("Send File:\t%s to Server IP Successful!\n", file_name);  
-  close(fp); 
 }
 
 
@@ -142,13 +142,7 @@ int main()
     perror("Create Socket Failed:");   
     exit(1);   
   }   
-    
-  // // 绑定客户端的socket和客户端的socket地址结构 非必需   
-  // if(-1 == (bind(client_socket_fd, (struct sockaddr*)&client_addr, sizeof(client_addr))))   
-  // {   
-  //   perror("Client Bind Failed:");   
-  //   exit(1);   
-  // }   
+      
     
   // 声明一个服务器端的socket地址结构，并用服务器那边的IP地址及端口对其进行初始化，用于后面的连接   
   struct sockaddr_in server_addr;   

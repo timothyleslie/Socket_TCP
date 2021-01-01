@@ -87,7 +87,7 @@ int send_file(int server_socket_fd)
       int length = 0;   
       // 每读取一段数据，便将其发送给客户端，循环直到文件读完为止   
       while((length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)   
-      {   
+      {  
         if(send(server_socket_fd, buffer, length, 0) < 0)   
         {   
           printf("Send File:%s Failed./n", file_name);   
@@ -114,7 +114,6 @@ void* main_for_thread(void* socket_fd)
   while(1)
   {
     bzero(info_buffer, INFO_SIZE+1); 
-    printf("%s\n", info_buffer);
     // recv函数接收数据到缓冲区buffer中   
     if(recv(new_server_socket_fd, info_buffer, INFO_SIZE, 0) < 0)   
     {   
@@ -125,14 +124,16 @@ void* main_for_thread(void* socket_fd)
     if(!strcmp(info_buffer, "0"))//客户端发来下载请求
     {
       send_file(new_server_socket_fd);
+      break;
     }
     else if(!strcmp(info_buffer, "1"))//客户端发来上传请求
     {
       recv_file(new_server_socket_fd);
+      break;
     }  
     else
     {
-      printf("error command\n");
+      continue;
     }
   }
   // 关闭与客户端的连接
